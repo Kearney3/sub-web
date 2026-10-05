@@ -1,23 +1,29 @@
 <template>
   <el-dialog
-    :visible.sync="localVisible"
+    v-model="localVisible"
     :show-close="false"
-    :close-on-click-modal="false"
-    :close-on-press-escape="false"
+    :close-on-click-modal="!loading"
+    :close-on-press-escape="!loading"
     width="700px"
   >
-    <div slot="title">
+    <template #header>
       Remote config upload
-      <el-popover trigger="hover" placement="right" style="margin-left: 10px">
-        <el-link type="primary" :href="sampleConfig" target="_blank" icon="el-icon-info">参考配置</el-link>
-        <i class="el-icon-question" slot="reference"></i>
+      <el-popover trigger="hover" placement="right">
+        <template #reference>
+          <el-icon style="margin-left: 10px"><QuestionFilled /></el-icon>
+        </template>
+        <el-link type="primary" :href="sampleConfig" target="_blank" :icon="InfoFilled">参考配置</el-link>
       </el-popover>
-    </div>
+    </template>
 
     <el-form label-position="left">
-      <el-form-item prop="uploadConfig">
+      <el-form-item v-if="resultUrl" label="配置链接">
+        <el-input :model-value="resultUrl" readonly />
+      </el-form-item>
+      <el-form-item v-else prop="uploadConfig">
         <el-input
           v-model="localUploadConfig"
+          :disabled="loading"
           type="textarea"
           :autosize="{ minRows: 15, maxRows: 30 }"
           maxlength="10000"
@@ -26,20 +32,33 @@
       </el-form-item>
     </el-form>
 
-    <div slot="footer" class="dialog-footer">
-      <el-button @click="handleCancel">取 消</el-button>
-      <el-button type="primary" @click="handleConfirm" :disabled="localUploadConfig.length === 0">
-        确 定
-      </el-button>
-    </div>
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="handleCancel" :disabled="loading">{{ resultUrl ? '关 闭' : '取 消' }}</el-button>
+        <el-button
+          v-if="!resultUrl"
+          type="primary"
+          @click="handleConfirm"
+          :loading="loading"
+          :disabled="loading || localUploadConfig.trim().length === 0"
+        >
+          确 定
+        </el-button>
+      </div>
+    </template>
   </el-dialog>
 </template>
 
 <script>
+import { InfoFilled, QuestionFilled } from '@element-plus/icons-vue';
+
 import { CONSTANTS } from '@/config/constants';
 
 export default {
   name: 'ConfigUploadDialog',
+  components: {
+    QuestionFilled
+  },
   props: {
     visible: {
       type: Boolean,
@@ -52,32 +71,47 @@ export default {
     loading: {
       type: Boolean,
       default: false
+    },
+    resultUrl: {
+      type: String,
+      default: ''
     }
   },
+  emits: ['update:visible', 'cancel', 'confirm'],
   data() {
     return {
       sampleConfig: CONSTANTS.REMOTE_CONFIG_SAMPLE,
-      localUploadConfig: this.uploadConfig,
-      localVisible: this.visible
+      localUploadConfig: this.uploadConfig
     };
+  },
+  computed: {
+    // 图标组件经 computed 暴露，避免放入 data 被转换为响应式对象
+    InfoFilled() {
+      return InfoFilled;
+    },
+
+    localVisible: {
+      get() {
+        return this.visible;
+      },
+      set(newVal) {
+        this.$emit('update:visible', newVal);
+      }
+    }
   },
   watch: {
     uploadConfig(newVal) {
       this.localUploadConfig = newVal;
-    },
-    visible(newVal) {
-      this.localVisible = newVal;
-    },
-    localVisible(newVal) {
-      this.$emit('update:visible', newVal);
     }
   },
   methods: {
     handleCancel() {
-      this.$emit('cancel');
+      if (this.loading) return
+      this.$emit('cancel')
     },
     handleConfirm() {
-      this.$emit('confirm', this.localUploadConfig);
+      if (this.loading) return
+      this.$emit('confirm', this.localUploadConfig)
     }
   }
 };

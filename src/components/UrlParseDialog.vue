@@ -1,27 +1,29 @@
 <template>
   <el-dialog
-    :visible.sync="localVisible"
+    v-model="localVisible"
     :show-close="false"
-    :close-on-click-modal="false"
-    :close-on-press-escape="false"
+    :close-on-click-modal="!loading"
+    :close-on-press-escape="!loading"
     width="700px"
   >
-    <div slot="title">
+    <template #header>
       解析 Subconverter 链接
-    </div>
+    </template>
 
     <el-form label-position="left" :inline="true">
       <el-form-item prop="loadConfig" label="订阅链接：" label-width="85px">
-        <el-input v-model="localLoadConfig" style="width: 565px" />
+        <el-input v-model="localLoadConfig" :disabled="loading" style="width: 565px" />
       </el-form-item>
     </el-form>
 
-    <div slot="footer" class="dialog-footer">
-      <el-button @click="handleCancel">取 消</el-button>
-      <el-button type="primary" @click="handleConfirm" :disabled="localLoadConfig.length === 0">
-        确 定
-      </el-button>
-    </div>
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="handleCancel" :disabled="loading">取 消</el-button>
+        <el-button type="primary" @click="handleConfirm" :loading="loading" :disabled="loading || localLoadConfig.trim().length === 0">
+          确 定
+        </el-button>
+      </div>
+    </template>
   </el-dialog>
 </template>
 
@@ -42,29 +44,35 @@ export default {
       default: false
     }
   },
+  emits: ['update:visible', 'cancel', 'confirm'],
   data() {
     return {
-      localLoadConfig: this.loadConfig,
-      localVisible: this.visible
+      localLoadConfig: this.loadConfig
     };
+  },
+  computed: {
+    localVisible: {
+      get() {
+        return this.visible;
+      },
+      set(newVal) {
+        this.$emit('update:visible', newVal);
+      }
+    }
   },
   watch: {
     loadConfig(newVal) {
       this.localLoadConfig = newVal;
-    },
-    visible(newVal) {
-      this.localVisible = newVal;
-    },
-    localVisible(newVal) {
-      this.$emit('update:visible', newVal);
     }
   },
   methods: {
     handleCancel() {
-      this.$emit('cancel');
+      if (this.loading) return
+      this.$emit('cancel')
     },
     handleConfirm() {
-      this.$emit('confirm', this.localLoadConfig);
+      if (this.loading) return
+      this.$emit('confirm', this.localLoadConfig)
     }
   }
 };
